@@ -1,0 +1,271 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile document",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 100 },
+        "email": { "type": "string", "maxLength": 150 },
+        "phone": { "type": "string", "maxLength": 30 },
+        "servicios_realizados": { "type": "number" },
+        "has_subscription": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "name", "email", "createdAt", "updatedAt"]
+    },
+    "Business": {
+      "title": "Business",
+      "description": "Business profile owned by a user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "ownerId": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 120 },
+        "description": { "type": "string", "maxLength": 500 },
+        "category": { "type": "string", "maxLength": 50 },
+        "phone": { "type": "string", "maxLength": 30 },
+        "whatsapp": { "type": "string", "maxLength": 30 },
+        "city": { "type": "string", "maxLength": 100 },
+        "serviceArea": { "type": "string", "maxLength": 100 },
+        "logoUrl": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "ownerId", "name", "createdAt", "updatedAt"]
+    },
+    "Service": {
+      "title": "Service",
+      "description": "Service offered by the business",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "businessId": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 100 },
+        "description": { "type": "string", "maxLength": 500 },
+        "basePrice": { "type": "number" },
+        "durationMinutes": { "type": "number" },
+        "active": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "businessId", "name", "basePrice", "durationMinutes", "active", "createdAt", "updatedAt"]
+    },
+    "Client": {
+      "title": "Client",
+      "description": "Client of the business",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "businessId": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 100 },
+        "phone": { "type": "string", "maxLength": 30 },
+        "email": { "type": "string", "maxLength": 150 },
+        "notes": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "businessId", "name", "createdAt", "updatedAt"]
+    },
+    "Appointment": {
+      "title": "Appointment",
+      "description": "Service appointment booked with a client",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "businessId": { "type": "string", "maxLength": 128 },
+        "clientId": { "type": "string", "maxLength": 128 },
+        "clientName": { "type": "string", "maxLength": 100 },
+        "serviceId": { "type": "string", "maxLength": 128 },
+        "serviceName": { "type": "string", "maxLength": 100 },
+        "date": { "type": "string", "maxLength": 30 },
+        "dateISO": { "type": "string", "maxLength": 20 },
+        "startTime": { "type": "string", "maxLength": 20 },
+        "endTime": { "type": "string", "maxLength": 20 },
+        "durationMinutes": { "type": "number" },
+        "technician": { "type": "string", "maxLength": 100 },
+        "technicianId": { "type": "string", "maxLength": 128 },
+        "price": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "completed", "cancelled", "rescheduled"] },
+        "cancellationReason": { "type": "string", "maxLength": 300 },
+        "rescheduleReason": { "type": "string", "maxLength": 300 },
+        "history": { "type": "array" },
+        "notes": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "businessId", "clientId", "serviceId", "date", "startTime", "price", "status", "createdAt", "updatedAt"]
+    },
+    "PricingCalculation": {
+      "title": "PricingCalculation",
+      "description": "Saved pricing calculation breakdown",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "businessId": { "type": "string", "maxLength": 128 },
+        "serviceId": { "type": "string", "maxLength": 128 },
+        "materials": { "type": "number" },
+        "transport": { "type": "number" },
+        "otherExpenses": { "type": "number" },
+        "hoursWorked": { "type": "number" },
+        "desiredHourlyProfit": { "type": "number" },
+        "totalExpenses": { "type": "number" },
+        "recommendedPrice": { "type": "number" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "businessId", "totalExpenses", "recommendedPrice", "createdAt"]
+    },
+    "Payment": {
+      "title": "Payment",
+      "description": "Payment record for an appointment or service",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "businessId": { "type": "string", "maxLength": 128 },
+        "clientId": { "type": "string", "maxLength": 128 },
+        "clientName": { "type": "string", "maxLength": 100 },
+        "appointmentId": { "type": "string", "maxLength": 128 },
+        "serviceName": { "type": "string", "maxLength": 100 },
+        "amount": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "paid", "cancelled", "approved", "rejected", "refunded"] },
+        "method": { "type": "string", "enum": ["cash", "transfer", "payment_link"] },
+        "createdAt": { "type": "string" },
+        "paidAt": { "type": "string" }
+      },
+      "required": ["id", "businessId", "clientId", "amount", "status", "method", "createdAt"]
+    },
+    "Receipt": {
+      "title": "Receipt",
+      "description": "Digital receipt generated for client",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "businessId": { "type": "string", "maxLength": 128 },
+        "clientId": { "type": "string", "maxLength": 128 },
+        "clientName": { "type": "string", "maxLength": 100 },
+        "appointmentId": { "type": "string", "maxLength": 128 },
+        "receiptNumber": { "type": "string", "maxLength": 50 },
+        "serviceName": { "type": "string", "maxLength": 100 },
+        "amount": { "type": "number" },
+        "status": { "type": "string", "enum": ["paid", "pending", "cancelled"] },
+        "issuedAt": { "type": "string" }
+      },
+      "required": ["id", "businessId", "clientId", "receiptNumber", "amount", "status", "issuedAt"]
+    },
+    "Quote": {
+      "title": "Quote",
+      "description": "Service quote and service order document",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "businessId": { "type": "string", "maxLength": 128 },
+        "quoteNumber": { "type": "string", "maxLength": 50 },
+        "clientId": { "type": "string", "maxLength": 128 },
+        "clientName": { "type": "string", "maxLength": 100 },
+        "serviceName": { "type": "string", "maxLength": 100 },
+        "materialsCost": { "type": "number" },
+        "laborCost": { "type": "number" },
+        "totalCost": { "type": "number" },
+        "targetMargin": { "type": "number" },
+        "basePrice": { "type": "number" },
+        "subtotal": { "type": "number" },
+        "total": { "type": "number" },
+        "totalPaid": { "type": "number" },
+        "balanceDue": { "type": "number" },
+        "status": { "type": "string" },
+        "serviceOrderStatus": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "businessId", "quoteNumber", "clientName", "serviceName", "total", "balanceDue", "serviceOrderStatus", "createdAt", "updatedAt"]
+    },
+    "Subscription": {
+      "title": "Subscription",
+      "description": "Monetization subscription and tier limits",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "businessId": { "type": "string", "maxLength": 128 },
+        "plan": { "type": "string", "enum": ["free", "pro", "pro_payments"] },
+        "status": { "type": "string", "enum": ["trial", "active", "past_due", "cancelled", "expired"] },
+        "currency": { "type": "string", "maxLength": 10 },
+        "amount": { "type": "number" },
+        "trialStart": { "type": "string" },
+        "trialEnd": { "type": "string" },
+        "currentPeriodStart": { "type": "string" },
+        "currentPeriodEnd": { "type": "string" },
+        "provider": { "type": "string", "maxLength": 50 },
+        "providerSubscriptionId": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "businessId", "plan", "status", "currency", "createdAt", "updatedAt"]
+    },
+    "PaymentConnection": {
+      "title": "PaymentConnection",
+      "description": "Mercado Pago seller OAuth connection details",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "businessId": { "type": "string", "maxLength": 128 },
+        "provider": { "type": "string", "maxLength": 50 },
+        "providerUserId": { "type": "string", "maxLength": 128 },
+        "status": { "type": "string", "maxLength": 50 },
+        "connectedAt": { "type": "string" },
+        "expiresAt": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "businessId", "provider", "status", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile records accessible exclusively by the owner user."
+    },
+    "/businesses/{businessId}": {
+      "schema": "Business",
+      "description": "Business documents owned by a user."
+    },
+    "/businesses/{businessId}/services/{serviceId}": {
+      "schema": "Service",
+      "description": "Catalog of services for a given business."
+    },
+    "/businesses/{businessId}/clients/{clientId}": {
+      "schema": "Client",
+      "description": "Clients belonging to a given business."
+    },
+    "/businesses/{businessId}/appointments/{appointmentId}": {
+      "schema": "Appointment",
+      "description": "Appointments scheduled with clients."
+    },
+    "/businesses/{businessId}/pricingCalculations/{calculationId}": {
+      "schema": "PricingCalculation",
+      "description": "Historical calculations saved by the provider."
+    },
+    "/businesses/{businessId}/quotes/{quoteId}": {
+      "schema": "Quote",
+      "description": "Quotes and service orders belonging to a given business."
+    },
+    "/businesses/{businessId}/payments/{paymentId}": {
+      "schema": "Payment",
+      "description": "Payment records for the business."
+    },
+    "/businesses/{businessId}/receipts/{receiptId}": {
+      "schema": "Receipt",
+      "description": "Receipts issued to clients."
+    },
+    "/businesses/{businessId}/subscriptions/{subscriptionId}": {
+      "schema": "Subscription",
+      "description": "Subscription plans and limits for the business."
+    },
+    "/businesses/{businessId}/paymentConnections/{connectionId}": {
+      "schema": "PaymentConnection",
+      "description": "Payment gateway integrations for the business."
+    }
+  }
+}

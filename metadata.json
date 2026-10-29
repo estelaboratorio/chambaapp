@@ -1,0 +1,6 @@
+{
+  "name": "ChambaApp",
+  "description": "Tu negocio en tu bolsillo. Organiza tus citas, calcula cuánto cobrar y recibe tus pagos desde tu celular.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

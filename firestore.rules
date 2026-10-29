@@ -1,0 +1,125 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global Safety Net: Default deny everything
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions for strict authentication & multi-tenant account ownership
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isBusinessOwner(businessId) {
+      return isSignedIn() && (
+        (exists(/databases/$(database)/documents/businesses/$(businessId)) &&
+         get(/databases/$(database)/documents/businesses/$(businessId)).data.ownerId == request.auth.uid) ||
+        businessId == ('biz_' + request.auth.uid)
+      );
+    }
+
+    // Test connection doc used to verify Firestore connectivity
+    match /test/{testId} {
+      allow read: if true;
+    }
+
+    // Users Collection: Private to the authenticated owner
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isOwner(userId);
+    }
+
+    // Businesses Collection: Strictly isolated per authenticated owner
+    match /businesses/{businessId} {
+      allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.ownerId == request.auth.uid && request.resource.data.ownerId == resource.data.ownerId;
+      allow delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+
+      // Subcollection: Services (Catálogo aislado)
+      match /services/{serviceId} {
+        allow read: if isBusinessOwner(businessId);
+        allow create: if isBusinessOwner(businessId) && request.resource.data.businessId == businessId;
+        allow update: if isBusinessOwner(businessId) && request.resource.data.businessId == businessId;
+        allow delete: if isBusinessOwner(businessId);
+      }
+
+      // Subcollection: Clients (Cartera de clientes aislada)
+      match /clients/{clientId} {
+        allow read: if isBusinessOwner(businessId);
+        allow create: if isBusinessOwner(businessId) && request.resource.data.businessId == businessId;
+        allow update: if isBusinessOwner(businessId) && request.resource.data.businessId == businessId;
+        allow delete: if isBusinessOwner(businessId);
+      }
+
+      // Subcollection: Appointments (Agenda y citas aisladas)
+      match /appointments/{appointmentId} {
+        allow read: if isBusinessOwner(businessId);
+        allow create: if isBusinessOwner(businessId) && request.resource.data.businessId == businessId;
+        allow update: if isBusinessOwner(businessId) && request.resource.data.businessId == businessId;
+        allow delete: if isBusinessOwner(businessId);
+      }
+
+      // Subcollection: Pricing Calculations (Cálculos de precio aislados)
+      match /pricingCalculations/{calculationId} {
+        allow read: if isBusinessOwner(businessId);
+        allow create: if isBusinessOwner(businessId) && request.resource.data.businessId == businessId;
+        allow update: if isBusinessOwner(businessId) && request.resource.data.businessId == businessId;
+        allow delete: if isBusinessOwner(businessId);
+      }
+
+      // Subcollection: Quotes (Cotizaciones y órdenes aisladas)
+      match /quotes/{quoteId} {
+        allow read: if isBusinessOwner(businessId);
+        allow create: if isBusinessOwner(businessId) && request.resource.data.businessId == businessId;
+        allow update: if isBusinessOwner(businessId) && request.resource.data.businessId == businessId;
+        allow delete: if isBusinessOwner(businessId);
+      }
+
+      // Subcollection: Payments (Registro de cobros y pagos aislados)
+      match /payments/{paymentId} {
+        allow read: if isBusinessOwner(businessId);
+        allow create: if isBusinessOwner(businessId) && request.resource.data.businessId == businessId;
+        allow update: if isBusinessOwner(businessId) && request.resource.data.businessId == businessId;
+        allow delete: if isBusinessOwner(businessId);
+      }
+
+      // Subcollection: Receipts (Recibos emitidos aislados)
+      match /receipts/{receiptId} {
+        allow read: if isBusinessOwner(businessId);
+        allow create: if isBusinessOwner(businessId) && request.resource.data.businessId == businessId;
+        allow update: if isBusinessOwner(businessId) && request.resource.data.businessId == businessId;
+        allow delete: if isBusinessOwner(businessId);
+      }
+
+      // Subcollection: Subscriptions (Plan de suscripción de la cuenta)
+      match /subscriptions/{subscriptionId} {
+        allow read: if isBusinessOwner(businessId);
+        allow create: if isBusinessOwner(businessId) && request.resource.data.businessId == businessId;
+        allow update: if isBusinessOwner(businessId) && request.resource.data.businessId == businessId;
+        allow delete: if isBusinessOwner(businessId);
+      }
+
+      // Subcollection: Payment Connections (Configuración pasarelas)
+      match /paymentConnections/{connectionId} {
+        allow read: if isBusinessOwner(businessId);
+        allow create: if isBusinessOwner(businessId) && request.resource.data.businessId == businessId;
+        allow update: if isBusinessOwner(businessId) && request.resource.data.businessId == businessId;
+        allow delete: if isBusinessOwner(businessId);
+      }
+    }
+  }
+}
