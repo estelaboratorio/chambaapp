@@ -23,6 +23,7 @@ import {
   saveSubscription,
   seedDemoDataForUser 
 } from '../services/firebaseService';
+import { formatAuthError } from '../utils/authErrors';
 
 interface AuthContextType {
   currentUser: FirebaseUser | null;
@@ -323,8 +324,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (err: any) {
-      setError(err.message || 'Error al iniciar con Google.');
-      throw err;
+      const formatted = formatAuthError(err);
+      setError(formatted.message);
+      throw new Error(formatted.message);
     } finally {
       setLoading(false);
     }

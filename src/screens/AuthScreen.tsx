@@ -4,6 +4,7 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { ChambaLogo } from '../components/ChambaLogo';
 import { useAuth } from '../context/AuthContext';
+import { formatAuthError } from '../utils/authErrors';
 
 interface AuthScreenProps {
   onSuccess: (isNewUser?: boolean, registeredName?: string) => void;
@@ -65,7 +66,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
       }
     } catch (err: any) {
       console.error(err);
-      setLocalError(err.message || 'Error en la autenticación. Intenta nuevamente.');
+      const formatted = formatAuthError(err);
+      setLocalError(formatted.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -78,7 +80,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
       await signInWithGoogle();
       onSuccess(false);
     } catch (err: any) {
-      setLocalError(err.message || 'No se pudo iniciar con Google.');
+      const formatted = formatAuthError(err);
+      setLocalError(formatted.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -134,9 +137,27 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
         </div>
 
         {localError && (
-          <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-            <span>{localError}</span>
+          <div className="mb-4 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-xs space-y-2">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 mt-0.5" />
+              <span className="leading-relaxed">{localError}</span>
+            </div>
+            <div className="pt-1 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleFillDemoCredentials}
+                className="px-2.5 py-1 rounded-lg bg-rose-700 text-white font-heading font-semibold text-[11px] hover:bg-rose-800 transition-all cursor-pointer shadow-2xs"
+              >
+                Rellenar cuenta demo
+              </button>
+              <button
+                type="button"
+                onClick={handleGuestLogin}
+                className="px-2.5 py-1 rounded-lg bg-white border border-rose-300 text-rose-800 font-heading font-semibold text-[11px] hover:bg-rose-100 transition-all cursor-pointer"
+              >
+                Entrar como invitado
+              </button>
+            </div>
           </div>
         )}
 

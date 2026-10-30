@@ -632,10 +632,20 @@ export async function seedDemoDataForUser(userId: string, userName: string = 'Mi
 // ================= PUBLIC READ & BOOKING OPERATIONS =================
 export async function getPublicBusinessProfile(userIdOrBizId: string): Promise<Business | null> {
   if (!userIdOrBizId) return null;
-  const cleanId = userIdOrBizId.trim();
+  const cleanId = (userIdOrBizId || 'demo').trim();
 
   // 1. Built-in demo accounts fallback
-  if (cleanId === 'demo' || cleanId === 'ana' || cleanId === 'biz_demo_ana' || cleanId === 'usr_demo_ana') {
+  if (
+    cleanId === 'demo' || 
+    cleanId === 'ana' || 
+    cleanId === 'biz_demo_ana' || 
+    cleanId === 'usr_demo_ana' ||
+    cleanId === 'usr_general' ||
+    cleanId === 'biz_general' ||
+    cleanId === 'undefined' ||
+    cleanId === 'null' ||
+    !cleanId
+  ) {
     return {
       id: 'biz_demo_ana',
       ownerId: 'usr_demo_ana',
@@ -755,8 +765,8 @@ export async function getPublicBusinessProfile(userIdOrBizId: string): Promise<B
 export async function getPublicServices(businessId: string): Promise<Service[]> {
   if (!businessId) return [];
 
-  // Check demo
-  if (businessId === 'biz_demo_ana') {
+  // Check demo or general fallback
+  if (businessId === 'biz_demo_ana' || businessId === 'biz_general' || businessId === 'demo' || businessId === 'usr_demo_ana') {
     return [
       {
         id: 'srv_1',

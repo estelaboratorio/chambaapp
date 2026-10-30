@@ -112,7 +112,7 @@ export const ShareBusinessModal: React.FC<ShareBusinessModalProps> = ({
     });
   }, [qrType, publicCardUrl, publicBookingUrl]);
 
-  // Promotional text for WhatsApp / Social
+  // Promotional text for WhatsApp / Social (spaced cleanly so messaging apps parse URLs reliably)
   const promoServiceLines = [
     `⭐ Servicio principal: ${resolvedPrimary.name} ($${resolvedPrimary.basePrice} MXN)`,
     ...(resolvedSecondary.length > 0
@@ -120,7 +120,15 @@ export const ShareBusinessModal: React.FC<ShareBusinessModalProps> = ({
       : []),
   ].join('\n');
 
-  const promoText = `¡Hola! Ya puedes conocer mis servicios profesionales, consultar tarifas y agendar tu cita conmigo directamente en mi ChambaApp:\n\n${promoServiceLines}\n\n💳 Tarjeta digital: ${publicCardUrl}\n📅 Agenda tu cita aquí: ${publicBookingUrl}`;
+  const promoText = `¡Hola! Conoce mis servicios profesionales, tarifas y agenda tu cita directamente en mi ChambaApp:
+
+${promoServiceLines}
+
+💳 Tarjeta Digital:
+${publicCardUrl}
+
+📅 Agenda tu cita aquí:
+${publicBookingUrl}`;
 
   const handleCopyLink = (type: 'card' | 'booking') => {
     const urlToCopy = type === 'card' ? publicCardUrl : publicBookingUrl;

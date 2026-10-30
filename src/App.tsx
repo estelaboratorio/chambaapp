@@ -114,59 +114,85 @@ const initialDefaultServices: Service[] = [
   },
 ];
 
-// Helper to parse public unauthenticated routes
+// Helper to parse public unauthenticated routes (bulletproof across paths, queries, hashes, and subfolders)
 function parsePublicRoute(): { screen: Screen; userId: string; serviceId?: string } | null {
   if (typeof window === 'undefined') return null;
   const path = window.location.pathname;
   const search = new URLSearchParams(window.location.search);
-  const hash = window.location.hash;
+  const hash = window.location.hash || '';
 
-  // 1. Pathname matches: /tarjeta/:userId or /card/:userId
-  const cardMatch = path.match(/^\/(tarjeta|card)\/([^\/]+)/i);
-  if (cardMatch && cardMatch[2]) {
-    return { screen: 'public-card', userId: decodeURIComponent(cardMatch[2]) };
+  // 1. Search Query Parameters first (allows clean override in any hosting environment)
+  if (search.has('tarjeta') || search.has('card')) {
+    const val = search.get('tarjeta') || search.get('card');
+    const userId = val && val.trim() ? decodeURIComponent(val).trim() : 'demo';
+    return { screen: 'public-card', userId };
   }
-
-  // 2. Pathname matches: /agendar/:userId or /book/:userId
-  const bookMatch = path.match(/^\/(agendar|book)\/([^\/]+)/i);
-  if (bookMatch && bookMatch[2]) {
+  if (search.has('agendar') || search.has('book')) {
+    const val = search.get('agendar') || search.get('book');
+    const userId = val && val.trim() ? decodeURIComponent(val).trim() : 'demo';
     return { 
       screen: 'public-booking', 
-      userId: decodeURIComponent(bookMatch[2]),
-      serviceId: search.get('service') || undefined 
-    };
-  }
-
-  // 3. Fallback query parameters
-  if (search.get('tarjeta') || search.get('card')) {
-    return { screen: 'public-card', userId: search.get('tarjeta') || search.get('card') || 'demo' };
-  }
-  if (search.get('agendar') || search.get('book')) {
-    return { 
-      screen: 'public-booking', 
-      userId: search.get('agendar') || search.get('book') || 'demo',
+      userId,
       serviceId: search.get('service') || undefined 
     };
   }
   if (search.get('view') === 'tarjeta' || search.get('view') === 'card') {
-    return { screen: 'public-card', userId: search.get('userId') || search.get('biz') || 'demo' };
+    const userId = search.get('userId') || search.get('biz') || search.get('id') || 'demo';
+    return { screen: 'public-card', userId: decodeURIComponent(userId).trim() };
   }
   if (search.get('view') === 'agendar' || search.get('view') === 'book') {
+    const userId = search.get('userId') || search.get('biz') || search.get('id') || 'demo';
     return { 
       screen: 'public-booking', 
-      userId: search.get('userId') || search.get('biz') || 'demo',
+      userId: decodeURIComponent(userId).trim(),
       serviceId: search.get('service') || undefined 
     };
   }
-
-  // 4. Hash fallback: #/tarjeta/:userId or #/agendar/:userId
-  const hashCardMatch = hash.match(/^#\/(tarjeta|card)\/([^\/]+)/i);
-  if (hashCardMatch && hashCardMatch[2]) {
-    return { screen: 'public-card', userId: decodeURIComponent(hashCardMatch[2]) };
+  if (search.has('biz')) {
+    const bizId = search.get('biz');
+    if (bizId && bizId.trim()) {
+      return { screen: 'public-card', userId: decodeURIComponent(bizId).trim() };
+    }
   }
-  const hashBookMatch = hash.match(/^#\/(agendar|book)\/([^\/]+)/i);
-  if (hashBookMatch && hashBookMatch[2]) {
-    return { screen: 'public-booking', userId: decodeURIComponent(hashBookMatch[2]) };
+
+  // 2. Hash routing (crucial for WhatsApp, GitHub Pages, or static web servers)
+  // Matches: #/tarjeta/:userId, #/tarjeta, #tarjeta/..., #/agendar/..., #/book/...
+  const cleanHash = hash.replace(/^#\/?/, '');
+  const hashCardMatch = cleanHash.match(/^(?:tarjeta|card)(?:\/([^\/?#]+))?/i);
+  if (hashCardMatch) {
+    const rawId = hashCardMatch[1];
+    const userId = rawId ? decodeURIComponent(rawId).trim() : 'demo';
+    return { screen: 'public-card', userId: userId || 'demo' };
+  }
+  const hashBookMatch = cleanHash.match(/^(?:agendar|book)(?:\/([^\/?#]+))?/i);
+  if (hashBookMatch) {
+    const rawId = hashBookMatch[1];
+    const userId = rawId ? decodeURIComponent(rawId).trim() : 'demo';
+    const hashParams = new URLSearchParams(hash.includes('?') ? hash.split('?')[1] : '');
+    return { 
+      screen: 'public-booking', 
+      userId: userId || 'demo',
+      serviceId: hashParams.get('service') || search.get('service') || undefined 
+    };
+  }
+
+  // 3. Pathname routing (supports root path /tarjeta/:id and subpath /chambaapp/tarjeta/:id)
+  const pathCardMatch = path.match(/(?:^|\/)(tarjeta|card)(?:\/([^\/?#]+))?/i);
+  if (pathCardMatch) {
+    const rawId = pathCardMatch[2];
+    const userId = rawId ? decodeURIComponent(rawId).trim() : 'demo';
+    return { screen: 'public-card', userId: userId || 'demo' };
+  }
+
+  const pathBookMatch = path.match(/(?:^|\/)(agendar|book)(?:\/([^\/?#]+))?/i);
+  if (pathBookMatch) {
+    const rawId = pathBookMatch[2];
+    const userId = rawId ? decodeURIComponent(rawId).trim() : 'demo';
+    return { 
+      screen: 'public-booking', 
+      userId: userId || 'demo',
+      serviceId: search.get('service') || undefined 
+    };
   }
 
   return null;
@@ -729,9 +755,9 @@ function ChambaAppContent() {
     navigateTo('charge');
   };
 
-  // Listen for browser popstate navigation (forward/back)
+  // Listen for browser popstate & hashchange navigation, and sync route on mount
   useEffect(() => {
-    const handlePopState = () => {
+    const handleUrlChange = () => {
       const route = parsePublicRoute();
       if (route) {
         setPublicUserId(route.userId);
@@ -739,8 +765,16 @@ function ChambaAppContent() {
         setCurrentScreen(route.screen);
       }
     };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
+
+    // Execute immediately on mount to ensure direct links always activate their screen
+    handleUrlChange();
+
+    window.addEventListener('popstate', handleUrlChange);
+    window.addEventListener('hashchange', handleUrlChange);
+    return () => {
+      window.removeEventListener('popstate', handleUrlChange);
+      window.removeEventListener('hashchange', handleUrlChange);
+    };
   }, []);
 
   const navigateToPublicCard = (uId?: string) => {
@@ -766,6 +800,7 @@ function ChambaAppContent() {
   };
 
   // Determine header and navigation visibility
+  const isPublicClientView = (currentScreen === 'public-card' || currentScreen === 'public-booking') && !currentUser && !isDemoMode;
   const isPublicScreen = 
     currentScreen === 'welcome' || 
     currentScreen === 'auth' || 
@@ -796,67 +831,71 @@ function ChambaAppContent() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#EDF2F7] flex flex-col items-center justify-start sm:py-4 sm:px-4">
-      {/* Universal Screen Switcher Bar (Responsive on all screen sizes so preview is never blocked) */}
-      <aside aria-label="Navegador del prototipo y pantallas" className="w-full max-w-4xl mb-2 sm:mb-3 bg-white/95 backdrop-blur-md px-3 py-2 rounded-2xl border border-slate-200 shadow-2xs text-xs text-[#07326F]">
-        <div className="flex items-center justify-between gap-2 mb-1.5 sm:mb-0">
-          <div className="flex items-center gap-2">
-            <span className="font-heading font-bold text-xs bg-[#07326F] text-white px-2 py-0.5 rounded-md">
-              ChambaApp
-            </span>
-            <span className="text-slate-600 font-medium text-xs hidden sm:inline">
-              Revisión de todas las pantallas conectadas:
-            </span>
+    <div className={`min-h-screen bg-[#EDF2F7] flex flex-col items-center justify-start ${isPublicClientView ? 'p-0 sm:py-6 sm:px-4' : 'sm:py-4 sm:px-4'}`}>
+      {/* Universal Screen Switcher Bar (Hidden for unauthenticated public clients opening shared links) */}
+      {!isPublicClientView && (
+        <aside aria-label="Navegador del prototipo y pantallas" className="w-full max-w-4xl mb-2 sm:mb-3 bg-white/95 backdrop-blur-md px-3 py-2 rounded-2xl border border-slate-200 shadow-2xs text-xs text-[#07326F]">
+          <div className="flex items-center justify-between gap-2 mb-1.5 sm:mb-0">
+            <div className="flex items-center gap-2">
+              <span className="font-heading font-bold text-xs bg-[#07326F] text-white px-2 py-0.5 rounded-md">
+                ChambaApp
+              </span>
+              <span className="text-slate-600 font-medium text-xs hidden sm:inline">
+                Revisión de todas las pantallas conectadas:
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {/* Frame Toggle */}
+              <button
+                onClick={() => setIsDeviceFrame(!isDeviceFrame)}
+                className="hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-200 text-slate-600 hover:text-[#07326F] hover:bg-slate-50 font-heading text-[11px] cursor-pointer"
+              >
+                {isDeviceFrame ? (
+                  <>
+                    <Monitor className="w-3 h-3" />
+                    <span>Expandir</span>
+                  </>
+                ) : (
+                  <>
+                    <Smartphone className="w-3 h-3" />
+                    <span>Marco móvil</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {/* Frame Toggle */}
-            <button
-              onClick={() => setIsDeviceFrame(!isDeviceFrame)}
-              className="hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-200 text-slate-600 hover:text-[#07326F] hover:bg-slate-50 font-heading text-[11px] cursor-pointer"
-            >
-              {isDeviceFrame ? (
-                <>
-                  <Monitor className="w-3 h-3" />
-                  <span>Expandir</span>
-                </>
-              ) : (
-                <>
-                  <Smartphone className="w-3 h-3" />
-                  <span>Marco móvil</span>
-                </>
-              )}
-            </button>
+          {/* Scrollable Screen Tabs */}
+          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-1">
+            {allScreens.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => navigateTo(s.id)}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-heading font-medium transition-all whitespace-nowrap cursor-pointer shrink-0 ${
+                  currentScreen === s.id
+                    ? 'bg-[#07326F] text-white font-semibold shadow-xs'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-[#07326F] bg-slate-50 border border-slate-200/60'
+                }`}
+              >
+                {s.label}
+              </button>
+            ))}
           </div>
-        </div>
+        </aside>
+      )}
 
-        {/* Scrollable Screen Tabs */}
-        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-1">
-          {allScreens.map((s) => (
-            <button
-              key={s.id}
-              onClick={() => navigateTo(s.id)}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-heading font-medium transition-all whitespace-nowrap cursor-pointer shrink-0 ${
-                currentScreen === s.id
-                  ? 'bg-[#07326F] text-white font-semibold shadow-xs'
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-[#07326F] bg-slate-50 border border-slate-200/60'
-              }`}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
-      </aside>
-
-      {/* Main Mobile App Canvas */}
+      {/* Main Canvas */}
       <main
         className={`w-full bg-[#F7F9FC] transition-all relative flex flex-col justify-between overflow-x-hidden ${
-          isDeviceFrame
-            ? 'max-w-[420px] min-h-[844px] sm:rounded-[36px] sm:border-[8px] sm:border-slate-800 sm:shadow-2xl sm:ring-1 sm:ring-black/10'
-            : 'max-w-md min-h-screen sm:border sm:border-slate-200 sm:rounded-2xl sm:shadow-md'
+          isPublicClientView
+            ? 'max-w-xl min-h-screen sm:min-h-0 sm:rounded-3xl sm:border sm:border-slate-200 sm:shadow-xl'
+            : isDeviceFrame
+              ? 'max-w-[420px] min-h-[844px] sm:rounded-[36px] sm:border-[8px] sm:border-slate-800 sm:shadow-2xl sm:ring-1 sm:ring-black/10'
+              : 'max-w-md min-h-screen sm:border sm:border-slate-200 sm:rounded-2xl sm:shadow-md'
         }`}
       >
-        {isDeviceFrame && (
+        {!isPublicClientView && isDeviceFrame && (
           <div className="hidden sm:flex justify-center items-center h-4 pt-1 bg-transparent shrink-0">
             <div className="w-24 h-3.5 bg-slate-800 rounded-full" />
           </div>
