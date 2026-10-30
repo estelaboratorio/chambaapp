@@ -628,3 +628,253 @@ export async function seedDemoDataForUser(userId: string, userName: string = 'Mi
 
   return business;
 }
+
+// ================= PUBLIC READ & BOOKING OPERATIONS =================
+export async function getPublicBusinessProfile(userIdOrBizId: string): Promise<Business | null> {
+  if (!userIdOrBizId) return null;
+  const cleanId = userIdOrBizId.trim();
+
+  // 1. Built-in demo accounts fallback
+  if (cleanId === 'demo' || cleanId === 'ana' || cleanId === 'biz_demo_ana' || cleanId === 'usr_demo_ana') {
+    return {
+      id: 'biz_demo_ana',
+      ownerId: 'usr_demo_ana',
+      name: 'Servicios de Limpieza Ana',
+      category: 'Limpieza',
+      primaryService: 'Limpieza del hogar',
+      defaultPrice: 500,
+      description: 'Servicios profesionales de limpieza para hogares y departamentos.',
+      city: 'Ciudad de México',
+      serviceArea: 'Benito Juárez y Cuauhtémoc',
+      phone: '55 1234 5678',
+      whatsapp: '55 1234 5678',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  // 2. Direct Business ID getDoc
+  try {
+    const directDoc = await getDoc(doc(db, 'businesses', cleanId));
+    if (directDoc.exists()) {
+      return directDoc.data() as Business;
+    }
+  } catch (err) {
+    console.warn('Public getDoc business failed:', err);
+  }
+
+  // 3. Query businesses by ownerId == cleanId
+  try {
+    const q = query(collection(db, 'businesses'), where('ownerId', '==', cleanId), limit(1));
+    const snap = await getDocs(q);
+    if (!snap.empty) {
+      return snap.docs[0].data() as Business;
+    }
+  } catch (err) {
+    console.warn('Public query business by ownerId failed:', err);
+  }
+
+  // 4. Try doc "biz_" + cleanId
+  try {
+    const prefixDoc = await getDoc(doc(db, 'businesses', `biz_${cleanId}`));
+    if (prefixDoc.exists()) {
+      return prefixDoc.data() as Business;
+    }
+  } catch {}
+
+  // 5. Try UserProfile doc to construct business profile
+  try {
+    const userDoc = await getDoc(doc(db, 'users', cleanId));
+    if (userDoc.exists()) {
+      const uData = userDoc.data() as UserProfile;
+      return {
+        id: `biz_${uData.id}`,
+        ownerId: uData.id,
+        name: uData.name ? `Servicios de ${uData.name}` : 'Mi Negocio',
+        category: 'Servicios Profesionales',
+        primaryService: 'Servicio profesional',
+        defaultPrice: 500,
+        description: `Servicios profesionales independientes de ${uData.name}.`,
+        city: 'Ciudad de México',
+        phone: uData.phone || '',
+        whatsapp: uData.phone || '',
+        createdAt: uData.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+    }
+  } catch {}
+
+  // 6. Check LocalStorage fallback for offline / preview environment
+  try {
+    const customBiz = localStorage.getItem('chamba_custom_business');
+    if (customBiz) {
+      const parsed = JSON.parse(customBiz);
+      if (parsed.ownerId === cleanId || parsed.id === cleanId || parsed.id === `biz_${cleanId}`) {
+        return parsed;
+      }
+    }
+    const localUser = localStorage.getItem('chamba_local_user');
+    if (localUser) {
+      const parsedUser = JSON.parse(localUser);
+      if (parsedUser.id === cleanId) {
+        return {
+          id: `biz_${parsedUser.id}`,
+          ownerId: parsedUser.id,
+          name: parsedUser.name ? `Servicios de ${parsedUser.name}` : 'Mi Negocio',
+          category: 'Servicios Profesionales',
+          primaryService: 'Servicio profesional',
+          defaultPrice: 500,
+          description: `Servicios profesionales independientes de ${parsedUser.name}.`,
+          city: 'Ciudad de México',
+          phone: parsedUser.phone || '',
+          whatsapp: parsedUser.phone || '',
+          createdAt: parsedUser.createdAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+      }
+    }
+  } catch {}
+
+  // 7. Generic fallback so public view never fails
+  return {
+    id: cleanId.startsWith('biz_') ? cleanId : `biz_${cleanId}`,
+    ownerId: cleanId,
+    name: 'Servicios Profesionales',
+    category: 'Servicios a domicilio',
+    primaryService: 'Servicio general',
+    defaultPrice: 500,
+    description: 'Servicios profesionales y atención garantizada a domicilio.',
+    city: 'Ciudad de México',
+    phone: '55 1234 5678',
+    whatsapp: '55 1234 5678',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+export async function getPublicServices(businessId: string): Promise<Service[]> {
+  if (!businessId) return [];
+
+  // Check demo
+  if (businessId === 'biz_demo_ana') {
+    return [
+      {
+        id: 'srv_1',
+        businessId: 'biz_demo_ana',
+        name: 'Limpieza del hogar',
+        description: 'Limpieza profunda de sala, cocina y 2 recámaras.',
+        basePrice: 500,
+        durationMinutes: 180,
+        active: true,
+        isPrimary: true,
+        priority: 1,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'srv_2',
+        businessId: 'biz_demo_ana',
+        name: 'Limpieza exprés',
+        description: 'Limpieza rápida de áreas principales y baño.',
+        basePrice: 350,
+        durationMinutes: 120,
+        active: true,
+        isPrimary: false,
+        priority: 2,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ];
+  }
+
+  // 1. Try Firestore
+  try {
+    const snap = await getDocs(collection(db, 'businesses', businessId, 'services'));
+    if (!snap.empty) {
+      const list = snap.docs.map(d => d.data() as Service).filter(s => s.active !== false);
+      if (list.length > 0) return list;
+    }
+  } catch (err) {
+    console.warn('Public getDocs services failed:', err);
+  }
+
+  // 2. Try LocalStorage
+  try {
+    const stored = localStorage.getItem(`chamba_services_${businessId}`);
+    if (stored) {
+      const parsed = JSON.parse(stored) as Service[];
+      return parsed.filter(s => s.active !== false);
+    }
+  } catch {}
+
+  // 3. Fallback standard default service
+  return [
+    {
+      id: `srv_default_${businessId}`,
+      businessId,
+      name: 'Servicio general a domicilio',
+      description: 'Atención personalizada y trabajo garantizado.',
+      basePrice: 500,
+      durationMinutes: 120,
+      active: true,
+      isPrimary: true,
+      priority: 1,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }
+  ];
+}
+
+export async function getPublicAppointments(businessId: string): Promise<Appointment[]> {
+  if (!businessId) return [];
+  try {
+    const snap = await getDocs(collection(db, 'businesses', businessId, 'appointments'));
+    return snap.docs.map(d => d.data() as Appointment);
+  } catch (err) {
+    console.warn('Public getDocs appointments failed:', err);
+  }
+
+  try {
+    const stored = localStorage.getItem(`chamba_appointments_${businessId}`);
+    if (stored) return JSON.parse(stored);
+  } catch {}
+
+  return [];
+}
+
+export async function createPublicAppointment(businessId: string, appointment: Appointment): Promise<void> {
+  if (!businessId) throw new Error('ID de negocio requerido');
+
+  // 1. Save to Firestore
+  try {
+    await setDoc(doc(db, 'businesses', businessId, 'appointments', appointment.id), appointment);
+  } catch (err) {
+    console.warn('Error saving appointment to Firestore:', err);
+  }
+
+  // 2. Also register client in subcollection
+  try {
+    const newClient: Client = {
+      id: appointment.clientId,
+      businessId,
+      name: appointment.clientName,
+      phone: appointment.clientPhone || '',
+      address: appointment.address || '',
+      notes: appointment.notes || 'Registrado desde enlace público de agenda',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    await setDoc(doc(db, 'businesses', businessId, 'clients', appointment.clientId), newClient, { merge: true });
+  } catch (err) {
+    console.warn('Error saving client to Firestore:', err);
+  }
+
+  // 3. Update localStorage cache
+  try {
+    const storedApts = localStorage.getItem(`chamba_appointments_${businessId}`);
+    const apts = storedApts ? JSON.parse(storedApts) : [];
+    apts.unshift(appointment);
+    localStorage.setItem(`chamba_appointments_${businessId}`, JSON.stringify(apts));
+  } catch {}
+}
+

@@ -15,7 +15,9 @@ export type Screen =
   | 'client-detail'
   | 'business'
   | 'services-manager'
-  | 'plan-manager';
+  | 'plan-manager'
+  | 'public-card'
+  | 'public-booking';
 
 export type AppointmentStatus = 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'rescheduled';
 export type PaymentStatus = 'pending' | 'paid' | 'approved' | 'rejected' | 'cancelled' | 'refunded';

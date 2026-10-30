@@ -31,6 +31,8 @@ import { ClientDetailScreen } from './screens/ClientDetailScreen';
 import { BusinessScreen } from './screens/BusinessScreen';
 import { ServicesManagerScreen } from './screens/ServicesManagerScreen';
 import { PlanManagerScreen } from './screens/PlanManagerScreen';
+import { PublicCardScreen } from './screens/PublicCardScreen';
+import { PublicBookingScreen } from './screens/PublicBookingScreen';
 import { ShareBusinessModal } from './components/ShareBusinessModal';
 import { LegalModal } from './components/LegalModals';
 import { InstallAppBanner } from './components/InstallAppBanner';
@@ -112,11 +114,76 @@ const initialDefaultServices: Service[] = [
   },
 ];
 
+// Helper to parse public unauthenticated routes
+function parsePublicRoute(): { screen: Screen; userId: string; serviceId?: string } | null {
+  if (typeof window === 'undefined') return null;
+  const path = window.location.pathname;
+  const search = new URLSearchParams(window.location.search);
+  const hash = window.location.hash;
+
+  // 1. Pathname matches: /tarjeta/:userId or /card/:userId
+  const cardMatch = path.match(/^\/(tarjeta|card)\/([^\/]+)/i);
+  if (cardMatch && cardMatch[2]) {
+    return { screen: 'public-card', userId: decodeURIComponent(cardMatch[2]) };
+  }
+
+  // 2. Pathname matches: /agendar/:userId or /book/:userId
+  const bookMatch = path.match(/^\/(agendar|book)\/([^\/]+)/i);
+  if (bookMatch && bookMatch[2]) {
+    return { 
+      screen: 'public-booking', 
+      userId: decodeURIComponent(bookMatch[2]),
+      serviceId: search.get('service') || undefined 
+    };
+  }
+
+  // 3. Fallback query parameters
+  if (search.get('tarjeta') || search.get('card')) {
+    return { screen: 'public-card', userId: search.get('tarjeta') || search.get('card') || 'demo' };
+  }
+  if (search.get('agendar') || search.get('book')) {
+    return { 
+      screen: 'public-booking', 
+      userId: search.get('agendar') || search.get('book') || 'demo',
+      serviceId: search.get('service') || undefined 
+    };
+  }
+  if (search.get('view') === 'tarjeta' || search.get('view') === 'card') {
+    return { screen: 'public-card', userId: search.get('userId') || search.get('biz') || 'demo' };
+  }
+  if (search.get('view') === 'agendar' || search.get('view') === 'book') {
+    return { 
+      screen: 'public-booking', 
+      userId: search.get('userId') || search.get('biz') || 'demo',
+      serviceId: search.get('service') || undefined 
+    };
+  }
+
+  // 4. Hash fallback: #/tarjeta/:userId or #/agendar/:userId
+  const hashCardMatch = hash.match(/^#\/(tarjeta|card)\/([^\/]+)/i);
+  if (hashCardMatch && hashCardMatch[2]) {
+    return { screen: 'public-card', userId: decodeURIComponent(hashCardMatch[2]) };
+  }
+  const hashBookMatch = hash.match(/^#\/(agendar|book)\/([^\/]+)/i);
+  if (hashBookMatch && hashBookMatch[2]) {
+    return { screen: 'public-booking', userId: decodeURIComponent(hashBookMatch[2]) };
+  }
+
+  return null;
+}
+
 function ChambaAppContent() {
   const { currentUser, userProfile, currentBusiness, subscription, loading: authLoading, refreshBusinessData } = useAuth();
 
-  const [currentScreen, setCurrentScreen] = useState<Screen>('welcome');
-  const [navigationHistory, setNavigationHistory] = useState<Screen[]>(['welcome']);
+  const initialPublicRoute = parsePublicRoute();
+
+  const [currentScreen, setCurrentScreen] = useState<Screen>(() => {
+    if (initialPublicRoute) return initialPublicRoute.screen;
+    return 'welcome';
+  });
+  const [navigationHistory, setNavigationHistory] = useState<Screen[]>([initialPublicRoute?.screen || 'welcome']);
+  const [publicUserId, setPublicUserId] = useState<string>(() => initialPublicRoute?.userId || 'demo');
+  const [publicBookingServiceId, setPublicBookingServiceId] = useState<string | undefined>(() => initialPublicRoute?.serviceId);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
 
   const [isDemoMode, setIsDemoMode] = useState<boolean>(() => {
@@ -662,8 +729,49 @@ function ChambaAppContent() {
     navigateTo('charge');
   };
 
+  // Listen for browser popstate navigation (forward/back)
+  useEffect(() => {
+    const handlePopState = () => {
+      const route = parsePublicRoute();
+      if (route) {
+        setPublicUserId(route.userId);
+        if (route.serviceId) setPublicBookingServiceId(route.serviceId);
+        setCurrentScreen(route.screen);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const navigateToPublicCard = (uId?: string) => {
+    const targetId = uId || publicUserId || effectiveBusiness.ownerId || userProfile?.id || 'demo';
+    setPublicUserId(targetId);
+    setCurrentScreen('public-card');
+    try {
+      window.history.pushState(null, '', `/tarjeta/${encodeURIComponent(targetId)}`);
+    } catch {}
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const navigateToPublicBooking = (srvId?: string, uId?: string) => {
+    const targetId = uId || publicUserId || effectiveBusiness.ownerId || userProfile?.id || 'demo';
+    setPublicUserId(targetId);
+    if (srvId) setPublicBookingServiceId(srvId);
+    setCurrentScreen('public-booking');
+    try {
+      const q = srvId ? `?service=${encodeURIComponent(srvId)}` : '';
+      window.history.pushState(null, '', `/agendar/${encodeURIComponent(targetId)}${q}`);
+    } catch {}
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   // Determine header and navigation visibility
-  const isPublicScreen = currentScreen === 'welcome' || currentScreen === 'auth' || currentScreen === 'onboarding';
+  const isPublicScreen = 
+    currentScreen === 'welcome' || 
+    currentScreen === 'auth' || 
+    currentScreen === 'onboarding' ||
+    currentScreen === 'public-card' ||
+    currentScreen === 'public-booking';
   const showTopBar = !isPublicScreen;
   const showBottomNav = !isPublicScreen && currentScreen !== 'receipt' && currentScreen !== 'calculator-result';
   const showBackButton = currentScreen !== 'home' && !isPublicScreen;
@@ -683,6 +791,8 @@ function ChambaAppContent() {
     { id: 'plan-manager', label: 'Mi plan (Límite 5)', number: 12 },
     { id: 'business', label: 'Mi negocio', number: 13 },
     { id: 'services-manager', label: 'Servicios', number: 14 },
+    { id: 'public-card', label: '💳 Tarjeta pública', number: 15 },
+    { id: 'public-booking', label: '📅 Agendar pública', number: 16 },
   ];
 
   return (
@@ -1037,6 +1147,24 @@ function ChambaAppContent() {
               onBack={() => navigateTo('business')}
             />
           )}
+
+          {currentScreen === 'public-card' && (
+            <PublicCardScreen
+              userId={publicUserId || effectiveBusiness.ownerId || userProfile?.id || 'demo'}
+              onNavigateToBooking={(srvId) => navigateToPublicBooking(srvId)}
+              onGoToAppHome={() => navigateTo('home')}
+              isOwnerPreview={!!currentUser || isDemoMode}
+            />
+          )}
+
+          {currentScreen === 'public-booking' && (
+            <PublicBookingScreen
+              userId={publicUserId || effectiveBusiness.ownerId || userProfile?.id || 'demo'}
+              initialServiceId={publicBookingServiceId}
+              onBackToCard={() => navigateToPublicCard()}
+              onGoToAppHome={() => navigateTo('home')}
+            />
+          )}
         </div>
 
         {/* Bottom Navigation */}
@@ -1071,6 +1199,7 @@ function ChambaAppContent() {
           defaultPrice={effectiveBusiness.defaultPrice}
           services={sortedServices}
           phone={effectiveBusiness.phone || effectiveBusiness.whatsapp || '55 1234 5678'}
+          userId={effectiveBusiness.ownerId || userProfile?.id || currentUser?.uid || 'demo'}
           onClose={() => setIsShareModalOpen(false)}
           isFullPage={false}
         />

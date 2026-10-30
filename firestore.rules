@@ -33,42 +33,43 @@ service cloud.firestore {
       allow read: if true;
     }
 
-    // Users Collection: Private to the authenticated owner
+    // Users Collection: Public read for contact card display, writes strictly by owner
     match /users/{userId} {
-      allow get: if isOwner(userId);
+      allow get: if true;
+      allow list: if isSignedIn();
       allow create: if isOwner(userId) && request.resource.data.id == userId;
       allow update: if isOwner(userId) && request.resource.data.id == resource.data.id;
       allow delete: if isOwner(userId);
     }
 
-    // Businesses Collection: Strictly isolated per authenticated owner
+    // Businesses Collection: Public read for digital card & booking, updates strictly by owner
     match /businesses/{businessId} {
-      allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow get: if true;
+      allow list: if true;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
       allow update: if isSignedIn() && resource.data.ownerId == request.auth.uid && request.resource.data.ownerId == resource.data.ownerId;
       allow delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
 
-      // Subcollection: Services (Catálogo aislado)
+      // Subcollection: Services (Catálogo público de servicios para tarjeta y agenda)
       match /services/{serviceId} {
-        allow read: if isBusinessOwner(businessId);
+        allow read: if true;
         allow create: if isBusinessOwner(businessId) && request.resource.data.businessId == businessId;
         allow update: if isBusinessOwner(businessId) && request.resource.data.businessId == businessId;
         allow delete: if isBusinessOwner(businessId);
       }
 
-      // Subcollection: Clients (Cartera de clientes aislada)
+      // Subcollection: Clients (Creación permitida en citas de clientes externos)
       match /clients/{clientId} {
         allow read: if isBusinessOwner(businessId);
-        allow create: if isBusinessOwner(businessId) && request.resource.data.businessId == businessId;
+        allow create: if request.resource.data.businessId == businessId;
         allow update: if isBusinessOwner(businessId) && request.resource.data.businessId == businessId;
         allow delete: if isBusinessOwner(businessId);
       }
 
-      // Subcollection: Appointments (Agenda y citas aisladas)
+      // Subcollection: Appointments (Lectura pública de disponibilidad y creación por clientes)
       match /appointments/{appointmentId} {
-        allow read: if isBusinessOwner(businessId);
-        allow create: if isBusinessOwner(businessId) && request.resource.data.businessId == businessId;
+        allow read: if true;
+        allow create: if request.resource.data.businessId == businessId;
         allow update: if isBusinessOwner(businessId) && request.resource.data.businessId == businessId;
         allow delete: if isBusinessOwner(businessId);
       }

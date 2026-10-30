@@ -225,23 +225,23 @@
   "firestore": {
     "/users/{userId}": {
       "schema": "User",
-      "description": "User profile records accessible exclusively by the owner user."
+      "description": "User profile records with public read for digital card display and private owner writes."
     },
     "/businesses/{businessId}": {
       "schema": "Business",
-      "description": "Business documents owned by a user."
+      "description": "Business documents with public read for digital card and appointment booking."
     },
     "/businesses/{businessId}/services/{serviceId}": {
       "schema": "Service",
-      "description": "Catalog of services for a given business."
+      "description": "Catalog of services with public read access for client booking."
     },
     "/businesses/{businessId}/clients/{clientId}": {
       "schema": "Client",
-      "description": "Clients belonging to a given business."
+      "description": "Clients belonging to a given business with public creation from appointment booking."
     },
     "/businesses/{businessId}/appointments/{appointmentId}": {
       "schema": "Appointment",
-      "description": "Appointments scheduled with clients."
+      "description": "Appointments with public read of availability and public creation for client booking."
     },
     "/businesses/{businessId}/pricingCalculations/{calculationId}": {
       "schema": "PricingCalculation",

@@ -362,10 +362,10 @@ export const BusinessScreen: React.FC<BusinessScreenProps> = ({
               </div>
               <div>
                 <h3 className="font-heading font-bold text-sm text-[#07326F]">
-                  Mi tarjeta digital y enlace público
+                  Mi tarjeta digital y enlaces públicos
                 </h3>
                 <p className="text-[11px] text-slate-500">
-                  Compartir en WhatsApp, redes y ver código QR
+                  Compartir en WhatsApp, redes y descargar código QR
                 </p>
               </div>
             </div>
@@ -374,6 +374,29 @@ export const BusinessScreen: React.FC<BusinessScreenProps> = ({
             </span>
           </div>
         )}
+
+        {/* Ver vista previa de tarjeta pública */}
+        <div
+          onClick={() => onNavigate('public-card')}
+          className="p-4 bg-white rounded-2xl border border-slate-200/90 shadow-2xs hover:border-[#07326F]/30 flex items-center justify-between cursor-pointer transition-all active:scale-[0.99]"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#07326F] flex items-center justify-center shrink-0">
+              <ExternalLink className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-heading font-bold text-sm text-[#07326F]">
+                Vista previa de mi tarjeta pública
+              </h3>
+              <p className="text-[11px] text-slate-500">
+                Así ven tus clientes tu perfil y agenda abierta en línea
+              </p>
+            </div>
+          </div>
+          <span className="text-xs font-heading font-semibold text-[#07326F] shrink-0">
+            Abrir →
+          </span>
+        </div>
 
         {/* Mi Plan */}
         <div
